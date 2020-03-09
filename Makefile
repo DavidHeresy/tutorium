@@ -131,11 +131,11 @@ lab:
 	nohup $(PY) -m jupyterlab --browser $(BROWSER) > /dev/null 2>&1 &
 
 
-design:
+html:
 	#
 	#
 	# --- CONVERT NOTEBOOK TO HTML ---
 	#
-	$(PY) -m jupyter nbconvert --execute --to html designdoc.ipynb
-	$(BROWSER) designdoc.html
+	$(PY) -m jupyter nbconvert --execute --to html tutorium.ipynb
+	$(BROWSER) tutorium.html
 
