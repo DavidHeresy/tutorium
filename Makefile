@@ -1,5 +1,3 @@
-ENV = prod
-
 # --- GIT ---
 
 REPO = tutorium.git
@@ -15,6 +13,7 @@ init:
 	git remote add gitlab $(GITLAB)
 	git add .
 	git commit -a -m "initial commit"
+
 
 push:
 	#
@@ -34,68 +33,109 @@ push:
 	git push gitlab master
 
 
-# --- DOCKER ---
+# --- PYTHON ---
 
-PROJECT = davidheresy
-APP = none
-PROXY_APP = proxy
-CRYPTO_APP = cyrpto
-VERSION = none
-IMAGE = $(PROJECT)-$(APP):$(VERSION)
-EMAIL = david@familie-haerer.de
-
-
-build:
-	#
-	#
-	# --- BUILD DOCKER IMAGE ---
-	#
-	docker image build -t $(IMAGE) .
+REQUIREMENTS = requirements.txt
+VENV = venv
+ACTIVATE = activate 
+PY = ./$(VENV)/bin/python
+PIP = ./$(VENV)/bin/pip
+.SILENT: freeze
 
 
-run:
+venv:
 	#
 	#
-	# --- RUN DOCKER CONTAINER ---
+	# --- CREATE PYTHON VENV ---
 	#
-	docker run -d \
-		--name $(APP) \
-		-e "LETSENCRYPT_EMAIL=$(EMAIL)" \
-		-e "LETSENCRYPT_HOST=$(DOMAIN)" \
-		-e "VIRTUAL_HOST=$(DOMAIN)" \
-		$(IMAGE)
+	python3.8 -m venv $(VENV)
+	#
+	#
+	# --- UPDATE PIP ---
+	#
+	$(PIP) install --upgrade pip
+	#
+	#
+	# --- INSTALL GRIP FOR README PREVIEW ---
+	#
+	$(PIP) install grip 
+	#
+	#
+	# --- INSTALL PYTHON REQUIREMENTS ---
+	#
+	test -f $(REQUIREMENTS-PY) \
+	&& $(PIP) install -r $(REQUIREMENTS-PY) \
+	|| exit 0
+	#
+	#
+	# --- CREATE PYTHON ACTIVATION SCRIPT ---
+	#
+	echo "#!/bin/sh" > $(ACTIVATE)
+	echo "# Usage: $ source $(ACTIVATE)" >> $(ACTIVATE)
+	echo "source $(VENV)/bin/activate" >> $(ACTIVATE)
 
 
-prune:
+clean:
 	#
 	#
-	# --- STOP AND REMOVE DOCKER CONTAINER ---
+	# --- REMOVE VIRTUAL ENVIRONMENT ---
 	#
-	docker rm -f $(APP) | exit 0
-	#
-	#
-	# --- DOCKER SYSTEM PRUNE ---
-	#
-	docker system prune
-	#
-	#
-	# --- REMOVE DOCKER IMAGE ---
-	#
-	docker image rm -f $(IMAGE)
+	rm -rf $(VENV)
+	rm -f $(ACTIVATE)
 
 
-logs:
+update:
 	#
 	#
-	# --- PRINT DOCKER CONTAINER LOGS ---
+	# --- INSTALL PYTHON REQUIREMENTS ---
 	#
-	docker logs $(APP)
+	$(PIP) install -r $(REQUIREMENTS-PY) 
 
 
-attach:
+freeze:
 	#
 	#
-	# --- ATTACH TO DOCKER CONTAINER ---
+	# --- LIST INSTALLED PYTHON PACKAGES ---
 	#
-	docker exec -it $(APP) /bin/bash
+	$(PIP) freeze
+
+
+preview:
+	#
+	#
+	# --- PREVIEW README IN BROWSER ---
+	#
+	nohup $(PY) -m grip README.md > /dev/null 2>&1 &
+	$(BROWSER) "http://localhost:6419/" 
+
+
+kill:
+	#
+	#
+	# --- KILL ALL PYTHON PROCESSES IN THE VENV ---
+	#
+	killall $(PY)
+
+
+# --- JUPYTERLAB ---
+
+BROWSER := $(shell echo "$$BROWSER")
+
+lab:
+	#
+	#
+	# --- START JUPYTERLAB IN CHROMIUM ---
+	#
+	# TODO: Add conditional for verbose or quiet.
+	# $(PY) -m jupyterlab --browser $(BROWSER) 
+	nohup $(PY) -m jupyterlab --browser $(BROWSER) > /dev/null 2>&1 &
+
+
+design:
+	#
+	#
+	# --- CONVERT NOTEBOOK TO HTML ---
+	#
+	$(PY) -m jupyter nbconvert --execute --to html designdoc.ipynb
+	$(BROWSER) designdoc.html
 
